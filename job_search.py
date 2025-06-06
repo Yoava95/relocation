@@ -13,6 +13,54 @@ from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
+# ------------------------------------------------------------------
+#  Fuzzy allow-list and block-list
+# ------------------------------------------------------------------
+import difflib
+
+ALLOW_TITLES = [
+    "product manager",
+    "sr. product manager",
+    "senior product manager",
+    "staff product manager",
+    "product manager ai",
+    "ai product manager",
+    "principal product manager",
+    "product design lecturer",
+    "product design professor",
+    "industrial design lecturer",
+    "industrial design professor",
+    "product management lecturer",
+    "product management professor",
+]
+
+BLOCK_KEYWORDS = [
+    "engineer",
+    "designer",
+    "developer",
+    "architect",
+    "security",
+    "machine learning",
+    "data scientist",
+]
+
+def title_is_allowed(title: str, threshold: float = 0.7) -> bool:
+    """
+    True  ⇢ allowed title (fuzzy-matched) and no blocked keywords  
+    False ⇢ everything else
+    """
+    t = title.lower()
+
+    # Hard block first
+    if any(b in t for b in BLOCK_KEYWORDS):
+        return False
+
+    # Fuzzy allow
+    best = max(
+        difflib.SequenceMatcher(None, t, allow).ratio()
+        for allow in ALLOW_TITLES
+    )
+    return best >= threshold
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (reloc8-agent test)"
@@ -71,10 +119,13 @@ def search_jobs():
     jobs = []
     for kw in KEYWORDS:
         for job in scrape_page(quote_plus(kw)):
-            if job["link"] in seen:
-                continue
-            seen.add(job["link"])
-            jobs.append(job)
+    if job["link"] in seen:
+        continue
+    if not title_is_allowed(job["title"]):
+        continue          # skip titles we don’t want
+    seen.add(job["link"])
+    jobs.append(job)
+
         time.sleep(1)  # polite delay
     return jobs
 
