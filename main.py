@@ -42,3 +42,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+print("INFO: collected", len(new_jobs), "fresh jobs")
