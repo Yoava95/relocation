@@ -118,13 +118,13 @@ def search_jobs():
     seen = set()
     jobs = []
     for kw in KEYWORDS:
-    for job in scrape_page(quote_plus(kw)):
-        if job["link"] in seen:
-            continue
-        if not title_is_allowed(job["title"]):
-            continue  # skip unwanted titles
-        seen.add(job["link"])
-        jobs.append(job)
+        for job in scrape_page(quote_plus(kw)):
+            if job["link"] in seen:
+                continue
+            if not title_is_allowed(job["title"]):
+                continue  # skip unwanted titles
+            seen.add(job["link"])
+            jobs.append(job)
 
 
         time.sleep(1)  # polite delay
