@@ -24,7 +24,15 @@ from bs4 import BeautifulSoup
 import requests, re, html
 from urllib.parse import quote_plus
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (reloc8-agent)"}
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
 
 def scrape_indeed(keyword: str):
     """Simple Indeed query with 'relocation' filter in the text."""
