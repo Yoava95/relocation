@@ -21,7 +21,7 @@ def save_history(hist):
 def run():
     hist = load_history()
     new_jobs = [j for j in search_jobs() if j["link"] not in hist["seen_links"]]
-        if not new_jobs:
+    if not new_jobs:
         send_message("🏖 No new jobs today — have fun at the beach!")
         print("INFO: sent beach message")
         return        
