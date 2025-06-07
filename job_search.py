@@ -210,9 +210,13 @@ def search_jobs():
                 jobs.append(job)
 
         # -------------- Indeed -------------------
-        for job in scrape_indeed(kw):
-            if _keep(job, seen):
-                jobs.append(job)
+        try:
+            for job in scrape_indeed(kw):
+                if _keep(job, seen):
+                    jobs.append(job)
+        except Exception as e:
+            print("WARN: Indeed failed for", kw, "→", e)
+
 
         # -------------- Otta ---------------------
         for job in scrape_otta(kw):
