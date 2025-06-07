@@ -23,6 +23,24 @@ import difflib
 from bs4 import BeautifulSoup
 import requests, re, html
 from urllib.parse import quote_plus
+import time, re
+
+RELOCATION_PATTERNS = re.compile(
+    r"(relocation|visa\s+sponsorship|work\s*permit|moving\s+costs|moving\s+assistance|relocation\s+assistance|work-visa)",
+    re.I,
+)
+
+def page_mentions_relocation(url: str, timeout: int = 12) -> bool:
+    """
+    Downloads the job detail page and returns True if any relocation-related
+    phrase is found. Returns False on HTTP errors/timeouts.
+    """
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=timeout)
+        r.raise_for_status()
+        return bool(RELOCATION_PATTERNS.search(r.text))
+    except Exception:
+        return False
 
 HEADERS = {
     "User-Agent": (
@@ -202,7 +220,9 @@ def scrape_page(slug: str):
 def _keep(job, seen_set):
     if job["link"] in seen_set:
         return False
-    if not title_is_allowed(job["title"]):
+        # 1) Title passes your fuzzy allow-list
+    # 2) OR the detail page explicitly mentions relocation/visa
+    if not (title_is_allowed(job["title"]) or page_mentions_relocation(job["link"])):
         return False
     seen_set.add(job["link"])
     return True
@@ -216,6 +236,8 @@ def search_jobs():
         for job in scrape_page(quote_plus(kw)):
             if _keep(job, seen):
                 jobs.append(job)
+        time.sleep(1)   # be polite to the host
+
 
         # -------------- Indeed -------------------
         try:
@@ -230,15 +252,14 @@ def search_jobs():
         for job in scrape_otta(kw):
             if _keep(job, seen):
                 jobs.append(job)
+        time.sleep(1)   # be polite to the host
+
 
         # -------------- LinkedIn -----------------
         for job in scrape_linkedin(kw):
             if _keep(job, seen):
                 jobs.append(job)
 
-
-
-        time.sleep(1)  # polite delay
     return jobs
 
 
