@@ -191,19 +191,39 @@ def scrape_page(slug: str):
         )
     return rows
 
+def _keep(job, seen_set):
+    if job["link"] in seen_set:
+        return False
+    if not title_is_allowed(job["title"]):
+        return False
+    seen_set.add(job["link"])
+    return True
 
 def search_jobs():
     """Collect and de-duplicate jobs across all keywords."""
     seen = set()
     jobs = []
     for kw in KEYWORDS:
+                # -------------- Relocate.me --------------
         for job in scrape_page(quote_plus(kw)):
-            if job["link"] in seen:
-                continue
-            if not title_is_allowed(job["title"]):
-                continue  # skip unwanted titles
-            seen.add(job["link"])
-            jobs.append(job)
+            if _keep(job, seen):
+                jobs.append(job)
+
+        # -------------- Indeed -------------------
+        for job in scrape_indeed(kw):
+            if _keep(job, seen):
+                jobs.append(job)
+
+        # -------------- Otta ---------------------
+        for job in scrape_otta(kw):
+            if _keep(job, seen):
+                jobs.append(job)
+
+        # -------------- LinkedIn -----------------
+        for job in scrape_linkedin(kw):
+            if _keep(job, seen):
+                jobs.append(job)
+
 
 
         time.sleep(1)  # polite delay
