@@ -17,6 +17,85 @@ from bs4 import BeautifulSoup
 #  Fuzzy allow-list and block-list
 # ------------------------------------------------------------------
 import difflib
+# ------------------------------------------------------------------
+#  EXTRA SOURCES  (Indeed, Otta, LinkedIn quick scrape)
+# ------------------------------------------------------------------
+from bs4 import BeautifulSoup
+import requests, re, html
+from urllib.parse import quote_plus
+
+HEADERS = {"User-Agent": "Mozilla/5.0 (reloc8-agent)"}
+
+def scrape_indeed(keyword: str):
+    """Simple Indeed query with 'relocation' filter in the text."""
+    url = f"https://www.indeed.com/jobs?q={quote_plus(keyword)}+relocation&l="
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for card in soup.select("a.tapItem"):
+        title = card.select_one("h2").get_text(" ", strip=True)
+        if "relocation" not in title.lower():
+            continue
+        company = card.select_one(".companyName").get_text(strip=True)
+        loc = card.select_one(".companyLocation").get_text(strip=True)
+        link = "https://www.indeed.com" + card["href"]
+        rows.append(
+            {"title": html.unescape(title),
+             "company": company,
+             "location": loc,
+             "link": link,
+             "date": date.today().isoformat()}
+        )
+    return rows
+
+def scrape_otta(keyword: str):
+    """Otta search (public landing page)."""
+    url = f"https://app.otta.com/jobs?query={quote_plus(keyword)}&years=5&relocation=true"
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for card in soup.select("a.JobCard"):
+        title = card.select_one("h2").get_text(" ", strip=True)
+        company = card.select_one("h3").get_text(" ", strip=True)
+        loc = "Relocation"
+        link = "https://otta.com" + card["href"]
+        rows.append(
+            {"title": title,
+             "company": company,
+             "location": loc,
+             "link": link,
+             "date": date.today().isoformat()}
+        )
+    return rows
+
+def scrape_linkedin(keyword: str):
+    """LinkedIn public search page – keep titles that literally contain 'relocation'."""
+    url = ( "https://www.linkedin.com/jobs/search/?keywords="
+            f"{quote_plus(keyword)}%20relocation&location=&f_WT=2" )
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for li in soup.select("li.jobs-search-results__list-item"):
+        a = li.select_one("a.base-card__full-link")
+        if not a:
+            continue
+        title = a.select_one("h3").get_text(" ", strip=True)
+        if "relocation" not in title.lower():
+            continue
+        company = a.select_one("h4").get_text(" ", strip=True)
+        loc = a.select_one("span.job-search-card__location").get_text(" ", strip=True)
+        link = a["href"].split("?")[0]
+        rows.append(
+            {"title": title,
+             "company": company,
+             "location": loc,
+             "link": link,
+             "date": date.today().isoformat()}
+        )
+    return rows
 
 ALLOW_TITLES = [
     "product manager",
