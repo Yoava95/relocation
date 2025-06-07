@@ -21,8 +21,10 @@ def save_history(hist):
 def run():
     hist = load_history()
     new_jobs = [j for j in search_jobs() if j["link"] not in hist["seen_links"]]
-    if not new_jobs:
-        return
+        if not new_jobs:
+        send_message("🏖 No new jobs today — have fun at the beach!")
+        print("INFO: sent beach message")
+        return        
     msg_lines = [f"🌍 New roles for {date.today().isoformat()}"]
     for idx, job in enumerate(new_jobs, 1):
         msg_lines.append(f"{idx}. {job['title']} — {job['company']} — {job['location']}")
