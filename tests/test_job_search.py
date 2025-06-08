@@ -31,7 +31,7 @@ def test_skip_seen_job(monkeypatch):
 def test_allowed_title_passes(monkeypatch):
     job = {"link": "http://example.com/job2", "title": "Product Manager"}
     seen = set()
-    monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: False)
+    monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
     assert job_search._keep(job, seen)
     assert job["link"] in seen
 
@@ -42,3 +42,18 @@ def test_fail_without_title_or_relocation(monkeypatch):
     monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: False)
     assert not job_search._keep(job, seen)
     assert job["link"] not in seen
+
+
+def test_allowed_title_without_relocation(monkeypatch):
+    job = {"link": "http://example.com/job4", "title": "Product Manager"}
+    seen = set()
+    monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: False)
+    assert not job_search._keep(job, seen)
+    assert job["link"] not in seen
+
+
+def test_query_is_deduped(monkeypatch):
+    job1 = {"link": "http://example.com/job5?utm=123", "title": "Product Manager"}
+    seen = {"http://example.com/job5"}
+    monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
+    assert not job_search._keep(job1, seen)
