@@ -163,6 +163,30 @@ def scrape_glassdoor(keyword: str):
         )
     return rows
 
+def scrape_remotive(keyword: str):
+    """Search Remotive API for jobs mentioning relocation."""
+    url = "https://remotive.com/api/remote-jobs"
+    params = {"search": f"{keyword} relocation"}
+    r = requests.get(url, params=params, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    rows = []
+    for job in data.get("jobs", []):
+        title = job.get("title", "")
+        if "relocation" not in title.lower() and \
+           "relocation" not in job.get("description", "").lower():
+            continue
+        rows.append(
+            {
+                "title": title,
+                "company": job.get("company_name", ""),
+                "location": job.get("candidate_required_location", ""),
+                "link": job.get("url", ""),
+                "date": job.get("publication_date", "").split("T")[0],
+            }
+        )
+    return rows
+
 ALLOW_TITLES = [
     "product manager",
     "sr. product manager",
@@ -275,6 +299,7 @@ def search_jobs():
             ("Otta", scrape_otta),
             ("LinkedIn", scrape_linkedin),
             ("Glassdoor", scrape_glassdoor),
+            ("Remotive", scrape_remotive),
         ]:
             try:
                 for job in func(kw):
