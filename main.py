@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import date
 
 from job_search import search_jobs
-from bot_notify import send_message, await_reply
+from bot_notify import send_message, await_reply, send_document
 from cv_tailor import tailor_cv
 from apply_via_email import send_application
 
@@ -20,7 +20,8 @@ def save_history(hist):
 
 def run():
     hist = load_history()
-    new_jobs = [j for j in search_jobs() if j["link"] not in hist["seen_links"]]
+    canonical = lambda url: url.split("?", 1)[0]
+    new_jobs = [j for j in search_jobs() if canonical(j["link"]) not in hist["seen_links"]]
     if not new_jobs:
         send_message("🏖 No new jobs today — have fun at the beach!")
         print("INFO: sent beach message")
@@ -36,10 +37,11 @@ def run():
         if 1 <= idx <= len(new_jobs):
             job = new_jobs[idx-1]
             cv_path = tailor_cv(job)
+            send_document(cv_path, caption=f"CV for {job['company']}")
             if os.getenv("GMAIL_USER") and os.getenv("GMAIL_APP_PASSWORD"):
                 send_application(job, cv_path)
-            hist["applied_links"].append(job["link"])
-    hist["seen_links"].extend(j["link"] for j in new_jobs)
+            hist["applied_links"].append(canonical(job["link"]))
+    hist["seen_links"].extend(canonical(j["link"]) for j in new_jobs)
     save_history(hist)
 
 if __name__ == "__main__":

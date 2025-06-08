@@ -131,12 +131,6 @@ ALLOW_TITLES = [
     "product manager ai",
     "ai product manager",
     "principal product manager",
-    "product design lecturer",
-    "product design professor",
-    "industrial design lecturer",
-    "industrial design professor",
-    "product management lecturer",
-    "product management professor",
 ]
 
 BLOCK_KEYWORDS = [
@@ -174,8 +168,6 @@ KEYWORDS = [
     "staff-product-manager",
     "principal-product-manager",
     "innovation-manager",
-    "design-lecturer",
-    "design-school-lecturer",
 ]
 
 ROOT = "https://relocate.me"
@@ -215,14 +207,14 @@ def scrape_page(slug: str):
     return rows
 
 def _keep(job, seen_set):
-    if job["link"] in seen_set:
+    canonical = job["link"].split("?", 1)[0]
+    if canonical in seen_set:
         return False
-    # Keep the job only if at least one of the following is true:
-    #   1) Title passes your fuzzy allow-list
-    #   2) The detail page explicitly mentions relocation/visa
-    if not (title_is_allowed(job["title"]) or page_mentions_relocation(job["link"])):
+    if not title_is_allowed(job["title"]):
         return False
-    seen_set.add(job["link"])
+    if not page_mentions_relocation(job["link"]):
+        return False
+    seen_set.add(canonical)
     return True
 
 def search_jobs():

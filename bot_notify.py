@@ -11,6 +11,17 @@ def send_message(text):
     resp = requests.post(url, json={"chat_id": CHAT_ID, "text": text})
     resp.raise_for_status()
 
+def send_document(path, caption=None):
+    """Upload a document to the chat."""
+    url = f"{API_URL}/sendDocument"
+    with open(path, "rb") as f:
+        resp = requests.post(
+            url,
+            data={"chat_id": CHAT_ID, "caption": caption or ""},
+            files={"document": f},
+        )
+    resp.raise_for_status()
+
 def await_reply(timeout_sec=1800):
     """Polls for a reply that contains numbers like 1 3 4"""
     url = f"{API_URL}/getUpdates"
