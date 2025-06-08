@@ -170,7 +170,7 @@ def title_is_allowed(title: str, threshold: float = 0.7) -> bool:
 # Separate headers for Relocate.me requests so that other scrapers keep
 # the more realistic browser headers defined above.
 RELOCATE_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (reloc8-agent test)"
+    "User-Agent": "Mozilla/5.0 (relocate-agent test)"
 }
 
 KEYWORDS = [
