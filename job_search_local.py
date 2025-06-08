@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 import requests
 from bs4 import BeautifulSoup
 import difflib
+from bot_notify import send_message
 
 HEADERS = {
     "User-Agent": (
@@ -16,6 +17,14 @@ HEADERS = {
     ),
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def notify_blocked(site: str):
+    """Send a Telegram notification when a site blocks access."""
+    try:
+        send_message(f"{site} blocked access")
+    except Exception as exc:  # pragma: no cover - notification failures are non-critical
+        print("WARN: failed to notify Telegram →", exc)
 
 ALLOW_TITLES = [
     "product manager",
@@ -154,6 +163,8 @@ def search_jobs():
                         jobs.append(job)
             except Exception as e:
                 print(f"WARN: {func.__name__} failed for {kw} → {e}")
+                site = func.__name__.replace("scrape_", "").split("_")[0].capitalize()
+                notify_blocked(site)
         time.sleep(1)
     return jobs
 
