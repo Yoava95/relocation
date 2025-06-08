@@ -17,8 +17,13 @@ HEADERS = {
 def main():
     query = quote_plus("product manager relocation")
     url = f"https://www.indeed.com/jobs?q={query}"
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+    except Exception as exc:
+        print(json.dumps({"error": f"Failed to fetch results: {exc}"}))
+        return
+
     soup = BeautifulSoup(r.text, "html.parser")
     rows = []
     for card in soup.select("a.tapItem"):
