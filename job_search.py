@@ -1,6 +1,8 @@
 # Local job search for product manager roles in Israel
 
-import re, time, html
+import html
+import re
+import time
 from datetime import date
 from urllib.parse import quote_plus
 
@@ -17,6 +19,11 @@ HEADERS = {
     ),
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def canonical_url(url: str) -> str:
+    """Return a canonical form of the URL for deduping."""
+    return url.split("?", 1)[0]
 
 
 def notify_blocked(site: str):
@@ -138,8 +145,15 @@ def scrape_glassdoor(keyword: str):
     return rows
 
 
+SCRAPERS = [
+    ("Indeed", "scrape_indeed"),
+    ("LinkedIn", "scrape_linkedin"),
+    ("Glassdoor", "scrape_glassdoor"),
+]
+
+
 def _keep(job, seen_set):
-    canonical = job["link"].split("?", 1)[0]
+    canonical = canonical_url(job["link"])
     if canonical in seen_set:
         return False
     if not title_is_allowed(job["title"]):
@@ -150,21 +164,20 @@ def _keep(job, seen_set):
     return True
 
 
-def search_jobs():
+def search_jobs(keywords=None, scrapers=None):
+    keywords = keywords or KEYWORDS
+    scrapers = scrapers or SCRAPERS
     seen = set()
     jobs = []
-    for kw in KEYWORDS:
-        for site, func in [
-            ("Indeed", scrape_indeed),
-            ("LinkedIn", scrape_linkedin),
-            ("Glassdoor", scrape_glassdoor),
-        ]:
+    for kw in keywords:
+        for site, func_name in scrapers:
+            func = globals()[func_name]
             try:
                 for job in func(kw):
                     if _keep(job, seen):
                         jobs.append(job)
-            except Exception as e:
-                print(f"WARN: {func.__name__} failed for {kw} → {e}")
+            except Exception as exc:
+                print(f"WARN: {func.__name__} failed for {kw} → {exc}")
                 notify_blocked(site)
             time.sleep(1)
     return jobs
