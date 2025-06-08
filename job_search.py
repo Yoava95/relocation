@@ -56,7 +56,7 @@ HEADERS = {
 def notify_blocked(site: str):
     """Send a Telegram message that a specific site blocked access."""
     try:
-        send_message(f"{site} blocked access")
+        send_message(f"the request was blocked {site.lower()}")
     except Exception as exc:  # pragma: no cover - notification failures are non-critical
         print("WARN: failed to notify Telegram →", exc)
 
@@ -129,6 +129,37 @@ def scrape_linkedin(keyword: str):
              "location": loc,
              "link": link,
              "date": date.today().isoformat()}
+        )
+    return rows
+
+def scrape_glassdoor(keyword: str):
+    """Glassdoor search filtered for relocation-friendly jobs."""
+    url = (
+        "https://www.glassdoor.com/Job/jobs.htm?sc.keyword="
+        f"{quote_plus(keyword)}%20relocation"
+    )
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for card in soup.select("article.react-job-listing"):
+        title_tag = card.select_one("a.jobLink span")
+        if not title_tag:
+            continue
+        title = title_tag.get_text(" ", strip=True)
+        if "relocation" not in title.lower():
+            continue
+        company = card.select_one("div.jobHeader a").get_text(" ", strip=True)
+        loc = card.select_one("span.pr-xxsm").get_text(" ", strip=True)
+        link = "https://www.glassdoor.com" + card.get("data-job-url", "")
+        rows.append(
+            {
+                "title": title,
+                "company": company,
+                "location": loc,
+                "link": link,
+                "date": date.today().isoformat(),
+            }
         )
     return rows
 
@@ -243,6 +274,7 @@ def search_jobs():
             ("Indeed", scrape_indeed),
             ("Otta", scrape_otta),
             ("LinkedIn", scrape_linkedin),
+            ("Glassdoor", scrape_glassdoor),
         ]:
             try:
                 for job in func(kw):

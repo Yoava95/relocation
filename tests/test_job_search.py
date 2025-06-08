@@ -69,6 +69,7 @@ def test_blockage_triggers_notification(monkeypatch):
     monkeypatch.setattr(job_search, "scrape_indeed", boom)
     monkeypatch.setattr(job_search, "scrape_otta", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_glassdoor", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_page", lambda kw: [])
     monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
     monkeypatch.setattr(job_search, "time", types.ModuleType("time"))

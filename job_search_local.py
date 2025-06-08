@@ -22,7 +22,7 @@ HEADERS = {
 def notify_blocked(site: str):
     """Send a Telegram notification when a site blocks access."""
     try:
-        send_message(f"{site} blocked access")
+        send_message(f"the request was blocked {site.lower()}")
     except Exception as exc:  # pragma: no cover - notification failures are non-critical
         print("WARN: failed to notify Telegram →", exc)
 
