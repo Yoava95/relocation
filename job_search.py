@@ -167,7 +167,9 @@ def title_is_allowed(title: str, threshold: float = 0.7) -> bool:
     )
     return best >= threshold
 
-HEADERS = {
+# Separate headers for Relocate.me requests so that other scrapers keep
+# the more realistic browser headers defined above.
+RELOCATE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (reloc8-agent test)"
 }
 
@@ -187,7 +189,7 @@ BASE = ROOT + "/international-jobs/{}"
 
 def scrape_page(slug: str):
     url = BASE.format(slug)
-    r = requests.get(url, headers=HEADERS, timeout=30)
+    r = requests.get(url, headers=RELOCATE_HEADERS, timeout=30)
     r.raise_for_status()
 
     soup = BeautifulSoup(r.text, "html.parser")
