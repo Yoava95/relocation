@@ -70,6 +70,7 @@ def test_blockage_triggers_notification(monkeypatch):
     monkeypatch.setattr(job_search, "scrape_otta", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_glassdoor", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_remotive", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_page", lambda kw: [])
     monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
     monkeypatch.setattr(job_search, "time", types.ModuleType("time"))
@@ -79,3 +80,40 @@ def test_blockage_triggers_notification(monkeypatch):
 
     job_search.search_jobs()
     assert messages == ["Indeed"]
+
+
+def test_scrape_remotive(monkeypatch):
+    sample = {
+        "jobs": [
+            {
+                "title": "Product Manager Relocation",
+                "company_name": "Acme",
+                "candidate_required_location": "Anywhere",
+                "url": "http://example.com/job",
+                "publication_date": "2024-01-01T00:00:00",
+                "description": "Relocation offered",
+            }
+        ]
+    }
+
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return sample
+
+    def fake_get(url, params=None, headers=None, timeout=10):
+        return FakeResp()
+
+    monkeypatch.setattr(job_search.requests, "get", fake_get, raising=False)
+    rows = job_search.scrape_remotive("prod")
+    assert rows == [
+        {
+            "title": "Product Manager Relocation",
+            "company": "Acme",
+            "location": "Anywhere",
+            "link": "http://example.com/job",
+            "date": "2024-01-01",
+        }
+    ]
