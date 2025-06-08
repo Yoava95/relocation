@@ -1,47 +1,13 @@
-"""
-Scrape relocation-friendly jobs from Relocate.me category pages
-without any JS rendering.
+# Local job search for product manager roles in Israel
 
-Works with URLs like:
-  https://relocate.me/international-jobs/product-manager
-  https://relocate.me/international-jobs/senior-product-manager
-"""
-
-import re, time
+import re, time, html
 from datetime import date
 from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
-# ------------------------------------------------------------------
-#  Fuzzy allow-list and block-list
-# ------------------------------------------------------------------
 import difflib
-# ------------------------------------------------------------------
-#  EXTRA SOURCES  (Indeed, Otta, LinkedIn quick scrape)
-# ------------------------------------------------------------------
-from bs4 import BeautifulSoup
-import requests, re, html
-from urllib.parse import quote_plus
-import time, re
 from bot_notify import send_message
-
-RELOCATION_PATTERNS = re.compile(
-    r"(relocation|visa\s+sponsorship|work\s*permit|moving\s+costs|moving\s+assistance|relocation\s+assistance|work-visa)",
-    re.I,
-)
-
-def page_mentions_relocation(url: str, timeout: int = 12) -> bool:
-    """
-    Downloads the job detail page and returns True if any relocation-related
-    phrase is found. Returns False on HTTP errors/timeouts.
-    """
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=timeout)
-        r.raise_for_status()
-        return bool(RELOCATION_PATTERNS.search(r.text))
-    except Exception:
-        return False
 
 HEADERS = {
     "User-Agent": (
@@ -54,146 +20,16 @@ HEADERS = {
 
 
 def notify_blocked(site: str):
-    """Send a Telegram message that a specific site blocked access."""
+    """Send a Telegram notification when a site blocks access."""
     try:
         send_message(f"the request was blocked {site.lower()}")
     except Exception as exc:  # pragma: no cover - notification failures are non-critical
         print("WARN: failed to notify Telegram →", exc)
 
 
-def scrape_indeed(keyword: str):
-    """Simple Indeed query with 'relocation' filter in the text."""
-    url = f"https://www.indeed.com/jobs?q={quote_plus(keyword)}+relocation&l="
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = []
-    for card in soup.select("a.tapItem"):
-        title = card.select_one("h2").get_text(" ", strip=True)
-        if "relocation" not in title.lower():
-            continue
-        company = card.select_one(".companyName").get_text(strip=True)
-        loc = card.select_one(".companyLocation").get_text(strip=True)
-        link = "https://www.indeed.com" + card["href"]
-        rows.append(
-            {"title": html.unescape(title),
-             "company": company,
-             "location": loc,
-             "link": link,
-             "date": date.today().isoformat()}
-        )
-    return rows
-
-def scrape_otta(keyword: str):
-    """Otta search (public landing page)."""
-    url = f"https://app.otta.com/jobs?query={quote_plus(keyword)}&years=5&relocation=true"
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = []
-    for card in soup.select("a.JobCard"):
-        title = card.select_one("h2").get_text(" ", strip=True)
-        company = card.select_one("h3").get_text(" ", strip=True)
-        loc = "Relocation"
-        link = "https://otta.com" + card["href"]
-        rows.append(
-            {"title": title,
-             "company": company,
-             "location": loc,
-             "link": link,
-             "date": date.today().isoformat()}
-        )
-    return rows
-
-def scrape_linkedin(keyword: str):
-    """LinkedIn public search page – keep titles that literally contain 'relocation'."""
-    url = ( "https://www.linkedin.com/jobs/search/?keywords="
-            f"{quote_plus(keyword)}%20relocation&location=&f_WT=2" )
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = []
-    for li in soup.select("li.jobs-search-results__list-item"):
-        a = li.select_one("a.base-card__full-link")
-        if not a:
-            continue
-        title = a.select_one("h3").get_text(" ", strip=True)
-        if "relocation" not in title.lower():
-            continue
-        company = a.select_one("h4").get_text(" ", strip=True)
-        loc = a.select_one("span.job-search-card__location").get_text(" ", strip=True)
-        link = a["href"].split("?")[0]
-        rows.append(
-            {"title": title,
-             "company": company,
-             "location": loc,
-             "link": link,
-             "date": date.today().isoformat()}
-        )
-    return rows
-
-def scrape_glassdoor(keyword: str):
-    """Glassdoor search filtered for relocation-friendly jobs."""
-    url = (
-        "https://www.glassdoor.com/Job/jobs.htm?sc.keyword="
-        f"{quote_plus(keyword)}%20relocation"
-    )
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = []
-    for card in soup.select("article.react-job-listing"):
-        title_tag = card.select_one("a.jobLink span")
-        if not title_tag:
-            continue
-        title = title_tag.get_text(" ", strip=True)
-        if "relocation" not in title.lower():
-            continue
-        company = card.select_one("div.jobHeader a").get_text(" ", strip=True)
-        loc = card.select_one("span.pr-xxsm").get_text(" ", strip=True)
-        link = "https://www.glassdoor.com" + card.get("data-job-url", "")
-        rows.append(
-            {
-                "title": title,
-                "company": company,
-                "location": loc,
-                "link": link,
-                "date": date.today().isoformat(),
-            }
-        )
-    return rows
-
-def scrape_remotive(keyword: str):
-    """Search Remotive API for jobs mentioning relocation."""
-    url = "https://remotive.com/api/remote-jobs"
-    params = {"search": f"{keyword} relocation"}
-    r = requests.get(url, params=params, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    data = r.json()
-    rows = []
-    for job in data.get("jobs", []):
-        title = job.get("title", "")
-        if "relocation" not in title.lower() and \
-           "relocation" not in job.get("description", "").lower():
-            continue
-        rows.append(
-            {
-                "title": title,
-                "company": job.get("company_name", ""),
-                "location": job.get("candidate_required_location", ""),
-                "link": job.get("url", ""),
-                "date": job.get("publication_date", "").split("T")[0],
-            }
-        )
-    return rows
-
 ALLOW_TITLES = [
     "product manager",
-    "sr. product manager",
-    "senior product manager",
     "staff product manager",
-    "product manager ai",
-    "ai product manager",
     "principal product manager",
 ]
 
@@ -207,68 +43,100 @@ BLOCK_KEYWORDS = [
     "data scientist",
 ]
 
-def title_is_allowed(title: str, threshold: float = 0.7) -> bool:
-    """
-    True  ⇢ allowed title (fuzzy-matched) and no blocked keywords  
-    False ⇢ everything else
-    """
-    t = title.lower()
+KEYWORDS = [
+    "product manager",
+    "staff product manager",
+    "principal product manager",
+]
 
-    # Hard block first
+
+def title_is_allowed(title: str, threshold: float = 0.7) -> bool:
+    """Check fuzzy title allow list and block keywords"""
+    t = title.lower()
     if any(b in t for b in BLOCK_KEYWORDS):
         return False
-
-    # Fuzzy allow
-    best = max(
-        difflib.SequenceMatcher(None, t, allow).ratio()
-        for allow in ALLOW_TITLES
-    )
+    best = max(difflib.SequenceMatcher(None, t, allow).ratio() for allow in ALLOW_TITLES)
     return best >= threshold
 
 
-KEYWORDS = [
-    "product-manager",
-    "senior-product-manager",
-    "staff-product-manager",
-    "principal-product-manager",
-    "innovation-manager",
-]
-
-ROOT = "https://relocate.me"
-BASE = ROOT + "/international-jobs/{}"
-
-
-def scrape_page(slug: str):
-    url = BASE.format(slug)
-    r = requests.get(url, headers=HEADERS, timeout=30)
+def scrape_indeed(keyword: str):
+    url = f"https://www.indeed.com/jobs?q={quote_plus(keyword)}&l=Israel"
+    r = requests.get(url, headers=HEADERS, timeout=20)
     r.raise_for_status()
-
     soup = BeautifulSoup(r.text, "html.parser")
-
-    # Relocate.me's static HTML shows job links as <a> whose href ends with "-<digits>"
-    link_re = re.compile(r"^/[a-z0-9\-]+/[a-z0-9\-]+/[a-z0-9\-]+/[a-z0-9\-]+-\d+$")
-
     rows = []
-    for a in soup.find_all("a", href=link_re):
-        link = ROOT + a["href"]
-        title = a.get_text(strip=True)
-
-        # Company line is two previous siblings that are NavigableStrings
-        comp_node = a.find_previous(string=True)
-        loc_node = comp_node.find_previous(string=True) if comp_node else ""
-        company = comp_node.strip() if comp_node else ""
-        location = loc_node.strip() if loc_node else ""
-
-        rows.append(
-            {
-                "title": title,
-                "company": company,
-                "location": location,
-                "link": link,
-                "date": date.today().isoformat(),
-            }
-        )
+    for card in soup.select("a.tapItem"):
+        title = card.select_one("h2").get_text(" ", strip=True)
+        company = card.select_one(".companyName").get_text(strip=True)
+        loc = card.select_one(".companyLocation").get_text(strip=True)
+        if "israel" not in loc.lower():
+            continue
+        link = "https://www.indeed.com" + card["href"]
+        rows.append({
+            "title": html.unescape(title),
+            "company": company,
+            "location": loc,
+            "link": link,
+            "date": date.today().isoformat(),
+        })
     return rows
+
+
+def scrape_linkedin(keyword: str):
+    url = (
+        "https://www.linkedin.com/jobs/search/?keywords="
+        f"{quote_plus(keyword)}&location=Israel"
+    )
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for li in soup.select("li.jobs-search-results__list-item"):
+        a = li.select_one("a.base-card__full-link")
+        if not a:
+            continue
+        title = a.select_one("h3").get_text(" ", strip=True)
+        company = a.select_one("h4").get_text(" ", strip=True)
+        loc = a.select_one("span.job-search-card__location").get_text(" ", strip=True)
+        if "israel" not in loc.lower():
+            continue
+        link = a["href"].split("?")[0]
+        rows.append({
+            "title": title,
+            "company": company,
+            "location": loc,
+            "link": link,
+            "date": date.today().isoformat(),
+        })
+    return rows
+
+
+def scrape_glassdoor(keyword: str):
+    url = (
+        "https://www.glassdoor.com/Job/jobs.htm?sc.keyword="
+        f"{quote_plus(keyword)}&locT=N&locId=114&locName=Israel"
+    )
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = []
+    for card in soup.select("article.react-job-listing"):
+        title_tag = card.select_one("a.jobLink span")
+        if not title_tag:
+            continue
+        title = title_tag.get_text(" ", strip=True)
+        company = card.select_one("div.jobHeader a").get_text(" ", strip=True)
+        loc = card.select_one("span.pr-xxsm").get_text(" ", strip=True)
+        link = "https://www.glassdoor.com" + card.get("data-job-url", "")
+        rows.append({
+            "title": title,
+            "company": company,
+            "location": loc,
+            "link": link,
+            "date": date.today().isoformat(),
+        })
+    return rows
+
 
 def _keep(job, seen_set):
     canonical = job["link"].split("?", 1)[0]
@@ -276,44 +144,32 @@ def _keep(job, seen_set):
         return False
     if not title_is_allowed(job["title"]):
         return False
-    if not page_mentions_relocation(job["link"]):
+    if "israel" not in job["location"].lower():
         return False
     seen_set.add(canonical)
     return True
 
+
 def search_jobs():
-    """Collect and de-duplicate jobs across all keywords."""
     seen = set()
     jobs = []
     for kw in KEYWORDS:
-                # -------------- Relocate.me --------------
-        for job in scrape_page(quote_plus(kw)):
-            if _keep(job, seen):
-                jobs.append(job)
-        time.sleep(1)   # be polite to the host
-
-
-        # -------------- Extra sources ------------
         for site, func in [
             ("Indeed", scrape_indeed),
-            ("Otta", scrape_otta),
             ("LinkedIn", scrape_linkedin),
             ("Glassdoor", scrape_glassdoor),
-            ("Remotive", scrape_remotive),
         ]:
             try:
                 for job in func(kw):
                     if _keep(job, seen):
                         jobs.append(job)
             except Exception as e:
-                print(f"WARN: {site} failed for", kw, "→", e)
+                print(f"WARN: {func.__name__} failed for {kw} → {e}")
                 notify_blocked(site)
-            time.sleep(1)   # be polite to the host
-
+            time.sleep(1)
     return jobs
 
 
 if __name__ == "__main__":
     from pprint import pprint
-
     pprint(search_jobs()[:10])
