@@ -222,8 +222,9 @@ def scrape_page(slug: str):
 def _keep(job, seen_set):
     if job["link"] in seen_set:
         return False
-        # 1) Title passes your fuzzy allow-list
-    # 2) OR the detail page explicitly mentions relocation/visa
+    # Keep the job only if at least one of the following is true:
+    #   1) Title passes your fuzzy allow-list
+    #   2) The detail page explicitly mentions relocation/visa
     if not (title_is_allowed(job["title"]) or page_mentions_relocation(job["link"])):
         return False
     seen_set.add(job["link"])
