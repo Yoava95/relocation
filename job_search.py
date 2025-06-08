@@ -24,6 +24,7 @@ from bs4 import BeautifulSoup
 import requests, re, html
 from urllib.parse import quote_plus
 import time, re
+from bot_notify import send_message
 
 RELOCATION_PATTERNS = re.compile(
     r"(relocation|visa\s+sponsorship|work\s*permit|moving\s+costs|moving\s+assistance|relocation\s+assistance|work-visa)",
@@ -50,6 +51,14 @@ HEADERS = {
     ),
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def notify_blocked(site: str):
+    """Send a Telegram message that a specific site blocked access."""
+    try:
+        send_message(f"{site} blocked access")
+    except Exception as exc:  # pragma: no cover - notification failures are non-critical
+        print("WARN: failed to notify Telegram →", exc)
 
 
 def scrape_indeed(keyword: str):
@@ -236,19 +245,28 @@ def search_jobs():
                     jobs.append(job)
         except Exception as e:
             print("WARN: Indeed failed for", kw, "→", e)
+            notify_blocked("Indeed")
 
 
         # -------------- Otta ---------------------
-        for job in scrape_otta(kw):
-            if _keep(job, seen):
-                jobs.append(job)
+        try:
+            for job in scrape_otta(kw):
+                if _keep(job, seen):
+                    jobs.append(job)
+        except Exception as e:
+            print("WARN: Otta failed for", kw, "→", e)
+            notify_blocked("Otta")
         time.sleep(1)   # be polite to the host
 
 
         # -------------- LinkedIn -----------------
-        for job in scrape_linkedin(kw):
-            if _keep(job, seen):
-                jobs.append(job)
+        try:
+            for job in scrape_linkedin(kw):
+                if _keep(job, seen):
+                    jobs.append(job)
+        except Exception as e:
+            print("WARN: LinkedIn failed for", kw, "→", e)
+            notify_blocked("LinkedIn")
 
     return jobs
 

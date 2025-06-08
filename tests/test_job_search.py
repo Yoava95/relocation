@@ -57,3 +57,24 @@ def test_query_is_deduped(monkeypatch):
     seen = {"http://example.com/job5"}
     monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
     assert not job_search._keep(job1, seen)
+
+
+def test_blockage_triggers_notification(monkeypatch):
+    messages = []
+    monkeypatch.setattr(job_search, "KEYWORDS", ["kw"])
+
+    def boom(keyword):
+        raise Exception("blocked")
+
+    monkeypatch.setattr(job_search, "scrape_indeed", boom)
+    monkeypatch.setattr(job_search, "scrape_otta", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_page", lambda kw: [])
+    monkeypatch.setattr(job_search, "page_mentions_relocation", lambda url: True)
+    monkeypatch.setattr(job_search, "time", types.ModuleType("time"))
+    job_search.time.sleep = lambda s: None
+
+    monkeypatch.setattr(job_search, "notify_blocked", lambda site: messages.append(site))
+
+    job_search.search_jobs()
+    assert messages == ["Indeed"]
