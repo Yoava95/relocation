@@ -238,35 +238,20 @@ def search_jobs():
         time.sleep(1)   # be polite to the host
 
 
-        # -------------- Indeed -------------------
-        try:
-            for job in scrape_indeed(kw):
-                if _keep(job, seen):
-                    jobs.append(job)
-        except Exception as e:
-            print("WARN: Indeed failed for", kw, "→", e)
-            notify_blocked("Indeed")
-
-
-        # -------------- Otta ---------------------
-        try:
-            for job in scrape_otta(kw):
-                if _keep(job, seen):
-                    jobs.append(job)
-        except Exception as e:
-            print("WARN: Otta failed for", kw, "→", e)
-            notify_blocked("Otta")
-        time.sleep(1)   # be polite to the host
-
-
-        # -------------- LinkedIn -----------------
-        try:
-            for job in scrape_linkedin(kw):
-                if _keep(job, seen):
-                    jobs.append(job)
-        except Exception as e:
-            print("WARN: LinkedIn failed for", kw, "→", e)
-            notify_blocked("LinkedIn")
+        # -------------- Extra sources ------------
+        for site, func in [
+            ("Indeed", scrape_indeed),
+            ("Otta", scrape_otta),
+            ("LinkedIn", scrape_linkedin),
+        ]:
+            try:
+                for job in func(kw):
+                    if _keep(job, seen):
+                        jobs.append(job)
+            except Exception as e:
+                print(f"WARN: {site} failed for", kw, "→", e)
+                notify_blocked(site)
+            time.sleep(1)   # be polite to the host
 
     return jobs
 
