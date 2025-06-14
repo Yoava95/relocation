@@ -36,3 +36,14 @@ jobs:
         with:
           name: bot-logs
           path: bot.log
+      - name: Send logs to Telegram
+        if: always()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PY'
+          from bot_notify import send_document
+          send_document('pytest.log', caption='pytest log')
+          send_document('bot.log', caption='bot log')
+          PY
