@@ -145,10 +145,121 @@ def scrape_glassdoor(keyword: str):
     return rows
 
 
+def scrape_jobdata_api(keyword: str):
+    """Fetch jobs from JobdataAPI REST endpoint."""
+    base = "https://jobdataapi.com/api/jobs/?country_code=IL"
+    url = base
+    jobs = []
+    while url:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        for item in data.get("results", data.get("jobs", [])):
+            jobs.append(
+                {
+                    "title": item.get("title", ""),
+                    "company": item.get("company_name", ""),
+                    "location": item.get("location", "Israel"),
+                    "link": item.get("apply_url") or item.get("url"),
+                    "date": item.get("date_posted", "")[:10],
+                }
+            )
+        next_url = data.get("next")
+        if next_url and not next_url.startswith("http"):
+            next_url = "https://jobdataapi.com" + next_url
+        url = next_url
+    return jobs
+
+
+def scrape_remotive(keyword: str):
+    """Remote jobs from Remotive API."""
+    url = "https://remotive.io/api/remote-jobs?search=israel"
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    jobs = []
+    for item in data.get("jobs", []):
+        jobs.append(
+            {
+                "title": item.get("title", ""),
+                "company": item.get("company_name", ""),
+                "location": item.get("candidate_required_location", "Remote, Israel"),
+                "link": item.get("url"),
+                "date": item.get("publication_date", "")[:10],
+            }
+        )
+    return jobs
+
+
+def scrape_jobicy(keyword: str):
+    """Remote jobs from Jobicy API."""
+    url = "https://jobicy.com/api/v2/remote-jobs?geo=israel"
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    jobs = []
+    for item in data.get("jobs", []):
+        jobs.append(
+            {
+                "title": item.get("title", ""),
+                "company": item.get("company"),
+                "location": item.get("location", "Remote, Israel"),
+                "link": item.get("job_url") or item.get("url"),
+                "date": item.get("date" , "")[:10],
+            }
+        )
+    return jobs
+
+
+def scrape_iitjobs(keyword: str):
+    """Parse RSS feed from IITJobs."""
+    url = "https://www.iitjobs.com/jobs-in-israel/rss-jobs"
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "xml")
+    rows = []
+    for item in soup.select("item"):
+        rows.append(
+            {
+                "title": item.title.get_text(strip=True),
+                "company": "",
+                "location": "Israel",
+                "link": item.link.get_text(strip=True),
+                "date": item.pubDate.get_text(strip=True)[:16],
+            }
+        )
+    return rows
+
+
+def scrape_craigslist(keyword: str):
+    """Craigslist RSS feed for Israeli jobs via JobMob."""
+    url = "https://telaviv.craigslist.org/search/jjj?format=rss"
+    r = requests.get(url, headers=HEADERS, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "xml")
+    rows = []
+    for item in soup.select("item"):
+        rows.append(
+            {
+                "title": item.title.get_text(strip=True),
+                "company": "",
+                "location": "Israel",
+                "link": item.link.get_text(strip=True),
+                "date": item.pubDate.get_text(strip=True)[:16],
+            }
+        )
+    return rows
+
+
 SCRAPERS = [
     ("Indeed", "scrape_indeed"),
     ("LinkedIn", "scrape_linkedin"),
     ("Glassdoor", "scrape_glassdoor"),
+    ("JobdataAPI", "scrape_jobdata_api"),
+    ("Remotive", "scrape_remotive"),
+    ("Jobicy", "scrape_jobicy"),
+    ("IITJobs", "scrape_iitjobs"),
+    ("Craigslist", "scrape_craigslist"),
 ]
 
 
