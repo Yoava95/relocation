@@ -157,11 +157,13 @@ def scrape_alljobs_rss(keyword: str):
         title = item.findtext("title", "")
         link = item.findtext("link", "")
         desc = item.findtext("description", "")
+        m = re.search(r"Company[:\s]*([^|<]+)", desc, re.I)
+        company = m.group(1).strip() if m else ""
         m = re.search(r"Location[:\s]*([^|<]+)", desc, re.I)
         loc = m.group(1).strip() if m else "Israel"
         rows.append({
             "title": html.unescape(title),
-            "company": "",
+            "company": company,
             "location": loc,
             "link": link,
             "date": date.today().isoformat(),
@@ -170,10 +172,10 @@ def scrape_alljobs_rss(keyword: str):
 
 
 SCRAPERS = [
-    ("Indeed", "scrape_indeed"),
-    ("LinkedIn", "scrape_linkedin"),
-    ("Glassdoor", "scrape_glassdoor"),
-    ("AllJobs", "scrape_alljobs_rss"),
+    ("Indeed", scrape_indeed),
+    ("LinkedIn", scrape_linkedin),
+    ("Glassdoor", scrape_glassdoor),
+    ("AllJobs", scrape_alljobs_rss),
 ]
 
 
@@ -195,8 +197,7 @@ def search_jobs(keywords=None, scrapers=None):
     seen = set()
     jobs = []
     for kw in keywords:
-        for site, func_name in scrapers:
-            func = globals()[func_name]
+        for site, func in scrapers:
             try:
                 for job in func(kw):
                     if _keep(job, seen):

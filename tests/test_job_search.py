@@ -82,6 +82,16 @@ def test_blockage_triggers_notification(monkeypatch):
     monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_glassdoor", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_alljobs_rss", lambda kw: [])
+    monkeypatch.setattr(
+        job_search,
+        "SCRAPERS",
+        [
+            ("Indeed", job_search.scrape_indeed),
+            ("LinkedIn", job_search.scrape_linkedin),
+            ("Glassdoor", job_search.scrape_glassdoor),
+            ("AllJobs", job_search.scrape_alljobs_rss),
+        ],
+    )
     monkeypatch.setattr(job_search, "time", types.ModuleType("time"))
     job_search.time.sleep = lambda s: None
     monkeypatch.setattr(job_search, "notify_blocked", lambda site: messages.append(site))
@@ -100,7 +110,7 @@ def test_rss_scraper(monkeypatch):
         <item>
             <title>Product Manager</title>
             <link>http://example.com/rss1</link>
-            <description>Location: Tel Aviv, Israel</description>
+            <description>Company: ExampleCorp | Location: Tel Aviv, Israel</description>
         </item>
     </channel></rss>
     """
@@ -113,5 +123,6 @@ def test_rss_scraper(monkeypatch):
 
     monkeypatch.setattr(job_search.requests, "get", lambda url, headers=None, timeout=20: Resp(), raising=False)
     jobs = job_search.scrape_alljobs_rss("pm")
+    assert jobs[0]["company"] == "ExampleCorp"
     assert jobs[0]["location"] == "Tel Aviv, Israel"
     assert jobs[0]["link"] == "http://example.com/rss1"
