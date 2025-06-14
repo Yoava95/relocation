@@ -92,3 +92,26 @@ def test_blockage_triggers_notification(monkeypatch):
 
     job_search.search_jobs()
     assert messages == ["Indeed"]
+
+
+def test_blocked_once_for_multiple_keywords(monkeypatch):
+    messages = []
+    monkeypatch.setattr(job_search, "KEYWORDS", ["kw1", "kw2"])
+
+    def boom(keyword):
+        raise Exception("blocked")
+
+    monkeypatch.setattr(job_search, "scrape_indeed", boom)
+    monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_glassdoor", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_jobdata_api", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_remotive", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_jobicy", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_iitjobs", lambda kw: [])
+    monkeypatch.setattr(job_search, "scrape_craigslist", lambda kw: [])
+    monkeypatch.setattr(job_search, "time", types.ModuleType("time"))
+    job_search.time.sleep = lambda s: None
+    monkeypatch.setattr(job_search, "notify_blocked", lambda site: messages.append(site))
+
+    job_search.search_jobs()
+    assert messages == ["Indeed"]

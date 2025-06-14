@@ -280,6 +280,7 @@ def search_jobs(keywords=None, scrapers=None):
     scrapers = scrapers or SCRAPERS
     seen = set()
     jobs = []
+    blocked = set()
     for kw in keywords:
         for site, func_name in scrapers:
             func = globals()[func_name]
@@ -289,7 +290,9 @@ def search_jobs(keywords=None, scrapers=None):
                         jobs.append(job)
             except Exception as exc:
                 print(f"WARN: {func.__name__} failed for {kw} → {exc}")
-                notify_blocked(site)
+                if site not in blocked:
+                    notify_blocked(site)
+                    blocked.add(site)
             time.sleep(1)
     return jobs
 
