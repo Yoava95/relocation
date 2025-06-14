@@ -81,37 +81,9 @@ def test_blockage_triggers_notification(monkeypatch):
     monkeypatch.setattr(job_search, "scrape_indeed", boom)
     monkeypatch.setattr(job_search, "scrape_linkedin", lambda kw: [])
     monkeypatch.setattr(job_search, "scrape_glassdoor", lambda kw: [])
-    monkeypatch.setattr(job_search, "scrape_alljobs_rss", lambda kw: [])
     monkeypatch.setattr(job_search, "time", types.ModuleType("time"))
     job_search.time.sleep = lambda s: None
     monkeypatch.setattr(job_search, "notify_blocked", lambda site: messages.append(site))
 
     job_search.search_jobs()
     assert messages == ["Indeed"]
-
-
-def test_scrapers_include_alljobs():
-    assert any(name == "AllJobs" for name, _ in job_search.SCRAPERS)
-
-
-def test_rss_scraper(monkeypatch):
-    rss = """
-    <rss><channel>
-        <item>
-            <title>Product Manager</title>
-            <link>http://example.com/rss1</link>
-            <description>Location: Tel Aviv, Israel</description>
-        </item>
-    </channel></rss>
-    """
-
-    class Resp:
-        text = rss
-
-        def raise_for_status(self):
-            pass
-
-    monkeypatch.setattr(job_search.requests, "get", lambda url, headers=None, timeout=20: Resp(), raising=False)
-    jobs = job_search.scrape_alljobs_rss("pm")
-    assert jobs[0]["location"] == "Tel Aviv, Israel"
-    assert jobs[0]["link"] == "http://example.com/rss1"

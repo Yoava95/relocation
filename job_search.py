@@ -5,7 +5,6 @@ import re
 import time
 from datetime import date
 from urllib.parse import quote_plus
-import xml.etree.ElementTree as ET
 
 import requests
 from bs4 import BeautifulSoup
@@ -146,34 +145,10 @@ def scrape_glassdoor(keyword: str):
     return rows
 
 
-def scrape_alljobs_rss(keyword: str):
-    """Parse AllJobs RSS feed for a keyword."""
-    url = f"https://www.alljobs.co.il/Rss/?Keywords={quote_plus(keyword)}"
-    r = requests.get(url, headers=HEADERS, timeout=20)
-    r.raise_for_status()
-    root = ET.fromstring(r.text)
-    rows = []
-    for item in root.findall(".//item"):
-        title = item.findtext("title", "")
-        link = item.findtext("link", "")
-        desc = item.findtext("description", "")
-        m = re.search(r"Location[:\s]*([^|<]+)", desc, re.I)
-        loc = m.group(1).strip() if m else "Israel"
-        rows.append({
-            "title": html.unescape(title),
-            "company": "",
-            "location": loc,
-            "link": link,
-            "date": date.today().isoformat(),
-        })
-    return rows
-
-
 SCRAPERS = [
     ("Indeed", "scrape_indeed"),
     ("LinkedIn", "scrape_linkedin"),
     ("Glassdoor", "scrape_glassdoor"),
-    ("AllJobs", "scrape_alljobs_rss"),
 ]
 
 
